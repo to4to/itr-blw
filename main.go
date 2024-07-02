@@ -2,37 +2,18 @@ package main
 
 import (
 	"fmt"
+
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/joho/godotenv"
+	"github.com/to4to/itr-blw/router"
 )
 
 func main() {
+	r := router.Router()
+	// fs := http.FileServer(http.Dir("build"))
+	// http.Handle("/", fs)
+	fmt.Println("Starting server on the port 8080...")
 
-	godotenv.Load()
-	port := os.Getenv("PORT")
-
-	if port == "" {
-		log.Fatal("Port Not Bound ..failed to connect from env")
-
-	}
-
-	fmt.Println("PORT :", port)
-
-	router := chi.NewRouter()
-
-	server := &http.Server{
-
-		Handler: router,
-		Addr:    ":" + port,
-	}
-
-	err := server.ListenAndServe()
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
