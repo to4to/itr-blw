@@ -199,9 +199,12 @@ func insertEmployee(employee models.Employee) int64 {
     `
 
 	var id int64
+	//created_at, updated_at,joining_date := time.Now(), time.Now(),time.Now()
 
 	// Execute the SQL query and scan the generated employee_id into the id variable
 	err := db.QueryRow(sqlStatement,
+		// created_at,
+		// updated_at,
 		employee.Name,
 		employee.JoiningDate,
 		employee.Salary,
@@ -267,23 +270,30 @@ func getEmployee(employeeID int64) (models.Employee, error) {
 	return employee, err
 }
 
+// getAllEmployees retrieves all employees from the database.
+// It returns a slice of models.Employee and an error if any.
 func getAllEmployees() ([]models.Employee, error) {
+	// Create a new database connection
 	db := createConnection()
 	defer db.Close()
 
 	var employees []models.Employee
 
+	// SQL statement to select all employees
 	sqlStatement := `SELECT * FROM employees`
 
+	// Execute the query and get the result set
 	rows, err := db.Query(sqlStatement)
 	if err != nil {
 		log.Fatalf("Unable to execute the query. %v", err)
 	}
 	defer rows.Close()
 
+	// Iterate over the result set and scan each row into an employee struct
 	for rows.Next() {
 		var employee models.Employee
 
+		// Scan the row data into the employee struct fields
 		err = rows.Scan(
 			&employee.EmployeeID,
 			&employee.CreatedAt,
@@ -302,22 +312,29 @@ func getAllEmployees() ([]models.Employee, error) {
 			log.Fatalf("Unable to scan the row. %v", err)
 		}
 
+		// Append the employee to the employees slice
 		employees = append(employees, employee)
 	}
 
+	// Return the employees slice and any error that occurred
 	return employees, err
 }
 
+// updateEmployee updates an employee record in the database based on the provided employeeID.
+// It takes the employeeID and updatedEmployee as parameters and returns the number of rows affected by the update operation.
 func updateEmployee(employeeID int64, updatedEmployee models.Employee) int64 {
+	// create a new database connection
 	db := createConnection()
 	defer db.Close()
 
+	// SQL statement to update employee details based on employee_id
 	sqlStatement := `
 		UPDATE employees
 		SET name=$2, joining_date=$3, salary=$4, pan_number=$5, year=$6, tax_income=$7, deductions=$8, designation=$9
 		WHERE employee_id=$1
 	`
 
+	// Execute the update query with the provided employeeID and updatedEmployee data
 	res, err := db.Exec(sqlStatement,
 		employeeID,
 		updatedEmployee.Name,
@@ -330,16 +347,20 @@ func updateEmployee(employeeID int64, updatedEmployee models.Employee) int64 {
 		updatedEmployee.Designation,
 	)
 
+	// Handle any errors that occur during query execution
 	if err != nil {
 		log.Fatalf("Unable to execute the query. %v", err)
 	}
 
+	// Get the number of rows affected by the update operation
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		log.Fatalf("Error while checking the affected rows. %v", err)
 	}
 
+	// Print the total number of rows/records affected by the update operation
 	fmt.Printf("Total rows/records affected: %v", rowsAffected)
+
 	return rowsAffected
 }
 
