@@ -28,9 +28,9 @@ SET
     year = $5,
     tax_income = $6,
     deductions = $7,
-    designation = $8
+    designation = $8,
+    updated_at = NOW() -- Assuming you have an updated_at column and want to set it to the current time
 WHERE employee_id = $9;
-
 -- name: DeleteEmployee :exec
 DELETE FROM employee
 WHERE employee_id = $1;
