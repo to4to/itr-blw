@@ -94,7 +94,7 @@ func HandlerGetITR(w http.ResponseWriter, r *http.Request) {
 		return
 
 		// call the getStock function with stock id to retrieve a single stock
-		employee, err := getemployee(employee_id)
+		employee, err := getEmployee(employee_id)
 
 		if err != nil {
 			http.Error(w, "Unable to get employee", http.StatusBadRequest)
@@ -160,31 +160,67 @@ func HandlerUpdateITR(w http.ResponseWriter, r *http.Request) {
 // /////////////////////////////////////////////////////////////////
 // HandlerDeleteITR handles the HTTP DELETE request to delete a specific resource.
 func HandlerDeleteITR(w http.ResponseWriter, r *http.Request) {
-    // Extract the parameters from the request URL
-    params := mux.Vars(r)
+	// Extract the parameters from the request URL
+	params := mux.Vars(r)
 
-    // Convert the ID parameter to an integer
-    id, err := strconv.Atoi(params["id"])
-    if err != nil {
-        log.Fatalf("Unable to convert the string into int. %v", err)
-    }
+	// Convert the ID parameter to an integer
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		log.Fatalf("Unable to convert the string into int. %v", err)
+	}
 
-    // Delete the resource with the specified ID
-    deletedRows := deleteITR(int64(id))
+	// Delete the resource with the specified ID
+	deletedRows := deleteITR(int64(id))
 
-    // Prepare the success message with the number of rows affected
-    msg := fmt.Sprintf("Stock Deleted successfully. Total rows/record affected %v", deletedRows)
+	// Prepare the success message with the number of rows affected
+	msg := fmt.Sprintf("Stock Deleted successfully. Total rows/record affected %v", deletedRows)
 
-    // Create a response object with the deleted resource ID and message
-    res := response{
-        ID:      int64(id),
-        Message: msg,
-    }
+	// Create a response object with the deleted resource ID and message
+	res := response{
+		ID:      int64(id),
+		Message: msg,
+	}
 
-    // Send the response back to the client in JSON format
-    json.NewEncoder(w).Encode(res)
+	// Send the response back to the client in JSON format
+	json.NewEncoder(w).Encode(res)
 }
 
-    // Send the response back to the client in JSON format
-    json.NewEncoder(w).Encode(res)
+//------------------------- handler functions ----------------
+
+// insertEmployee inserts a new employee record into the database and returns the generated employee_id.
+func insertEmployee(employee models.Employee) int64 {
+    // create a new database connection
+    db := createConnection()
+    defer db.Close()
+
+    // SQL statement to insert employee details and return the generated employee_id
+    sqlStatement := `
+        INSERT INTO employees (name, joining_date, salary, pan_number, year, tax_income, deductions, designation)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING employee_id
+    `
+
+    var id int64
+
+    // Execute the SQL query and scan the generated employee_id into the id variable
+    err := db.QueryRow(sqlStatement,
+        employee.Name,
+        employee.JoiningDate,
+        employee.Salary,
+        employee.PanNumber,
+        employee.Year,
+        employee.TaxIncome,
+        employee.Deductions,
+        employee.Designation,
+    ).Scan(&id)
+
+    // Handle any errors that occur during query execution
+    if err != nil {
+        log.Fatalf("Unable to execute the query. %v", err)
+    }
+
+    // Print a success message with the generated employee_id
+    fmt.Printf("Inserted a single record with ID %v", id)
+
+    return id
 }
