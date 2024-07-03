@@ -5,16 +5,17 @@ import (
 	"github.com/to4to/itr-blw/middleware"
 )
 
-// Router is exported and used in main.go
+
+// Router returns a new instance of mux.Router configured with various API endpoints and their corresponding handlers.
 func Router() *mux.Router {
 
-	router := mux.NewRouter()
+    router := mux.NewRouter()
 
-	router.HandleFunc("/api/itr/{id}", middleware.GetITR).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/itr", middleware.GetAllITR).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/newitr", middleware.CreateITR).Methods("POST", "OPTIONS")
-	router.HandleFunc("/api/itr/{id}", middleware.UpdateITR).Methods("PUT", "OPTIONS")
-	router.HandleFunc("/api/deleteitr/{id}", middleware.DeleteITR).Methods("DELETE", "OPTIONS")
+    router.HandleFunc("/api/itr/{id}", middleware.HandlerGetITR).Methods("GET", "OPTIONS")
+    router.HandleFunc("/api/itr", middleware.HandlerGetAllITR).Methods("GET", "OPTIONS")
+    router.HandleFunc("/api/newitr", middleware.HandlerCreateITR).Methods("POST", "OPTIONS")
+    router.HandleFunc("/api/itr/{id}", middleware.HandlerUpdateITR).Methods("PUT", "OPTIONS")
+    router.HandleFunc("/api/deleteitr/{id}", middleware.HandlerDeleteITR).Methods("DELETE", "OPTIONS")
 
-	return router
+    return router
 }
