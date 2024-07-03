@@ -87,30 +87,28 @@ func HandlerGetITR(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 
 	// convert the id type from string to int
-	employee_id, err := strconv.Atoi(params["id"])
+	id, err := strconv.Atoi(params["id"])
 	//parsedUUID, err := uuid.Parse(uuidStr)
 	if err == nil {
 		http.Error(w, "Invalid UUID format", http.StatusBadRequest)
 		return
-
-		// call the getStock function with stock id to retrieve a single stock
-		employee, err := getEmployee(employee_id)
-
-		if err != nil {
-			http.Error(w, "Unable to get employee", http.StatusBadRequest)
-			return
-		}
-
-		// send the response
-		json.NewEncoder(w).Encode(employee)
 	}
+	employee, err := getEmployee(int64(id))
+
+	if err != nil {
+		http.Error(w, "Unable to get employee", http.StatusBadRequest)
+		return
+	}
+
+	// send the response
+	json.NewEncoder(w).Encode(employee)
 }
 
 // //////////////////////////////////////////////////////
 // HandlerGetAllITR is an HTTP handler function that retrieves all ITR (Income Tax Return) information.
 // It calls getAllITR function to fetch the data and encodes the result as JSON to the response writer.
 func HandlerGetAllITR(w http.ResponseWriter, r *http.Request) {
-	employees, err := getAllITR()
+	employees, err := getAllEmployees()
 
 	if err != nil {
 		log.Fatalf("Unable to get all ITR Info. %v", err)
@@ -170,7 +168,7 @@ func HandlerDeleteITR(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete the resource with the specified ID
-	deletedRows := deleteITR(int64(id))
+	deletedRows := deleteEmployee(int64(id))
 
 	// Prepare the success message with the number of rows affected
 	msg := fmt.Sprintf("Stock Deleted successfully. Total rows/record affected %v", deletedRows)
@@ -189,38 +187,185 @@ func HandlerDeleteITR(w http.ResponseWriter, r *http.Request) {
 
 // insertEmployee inserts a new employee record into the database and returns the generated employee_id.
 func insertEmployee(employee models.Employee) int64 {
-    // create a new database connection
-    db := createConnection()
-    defer db.Close()
+	// create a new database connection
+	db := createConnection()
+	defer db.Close()
 
-    // SQL statement to insert employee details and return the generated employee_id
-    sqlStatement := `
+	// SQL statement to insert employee details and return the generated employee_id
+	sqlStatement := `
         INSERT INTO employees (name, joining_date, salary, pan_number, year, tax_income, deductions, designation)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING employee_id
     `
 
-    var id int64
+	var id int64
 
-    // Execute the SQL query and scan the generated employee_id into the id variable
-    err := db.QueryRow(sqlStatement,
-        employee.Name,
-        employee.JoiningDate,
-        employee.Salary,
-        employee.PanNumber,
-        employee.Year,
-        employee.TaxIncome,
-        employee.Deductions,
-        employee.Designation,
-    ).Scan(&id)
+	// Execute the SQL query and scan the generated employee_id into the id variable
+	err := db.QueryRow(sqlStatement,
+		employee.Name,
+		employee.JoiningDate,
+		employee.Salary,
+		employee.PanNumber,
+		employee.Year,
+		employee.TaxIncome,
+		employee.Deductions,
+		employee.Designation,
+	).Scan(&id)
 
-    // Handle any errors that occur during query execution
-    if err != nil {
-        log.Fatalf("Unable to execute the query. %v", err)
-    }
+	// Handle any errors that occur during query execution
+	if err != nil {
+		log.Fatalf("Unable to execute the query. %v", err)
+	}
 
-    // Print a success message with the generated employee_id
-    fmt.Printf("Inserted a single record with ID %v", id)
+	// Print a success message with the generated employee_id
+	fmt.Printf("Inserted a single record with ID %v", id)
 
-    return id
+	return id
+}
+
+// getEmployee retrieves an employee from the database based on the provided employeeID.
+// It returns the employee details if found, otherwise an error.
+func getEmployee(employeeID int64) (models.Employee, error) {
+	// Create a new database connection
+	db := createConnection()
+	defer db.Close() // Ensure the database connection is closed when the function exits
+
+	var employee models.Employee
+
+	// SQL query to select employee details based on employee_id
+	sqlStatement := `SELECT * FROM employees WHERE employee_id=$1`
+
+	// Execute the query and get a single row result
+	row := db.QueryRow(sqlStatement, employeeID)
+
+	// Scan the row data into the employee struct fields
+	err := row.Scan(
+		&employee.EmployeeID,
+		&employee.CreatedAt,
+		&employee.UpdatedAt,
+		&employee.Name,
+		&employee.JoiningDate,
+		&employee.Salary,
+		&employee.PanNumber,
+		&employee.Year,
+		&employee.TaxIncome,
+		&employee.Deductions,
+		&employee.Designation,
+	)
+
+	// Handle different scan outcomes
+	switch err {
+	case sql.ErrNoRows:
+		fmt.Println("No rows were returned!")
+		return employee, nil
+	case nil:
+		return employee, nil
+	default:
+		log.Fatalf("Unable to scan the row. %v", err)
+	}
+
+	return employee, err
+}
+
+func getAllEmployees() ([]models.Employee, error) {
+	db := createConnection()
+	defer db.Close()
+
+	var employees []models.Employee
+
+	sqlStatement := `SELECT * FROM employees`
+
+	rows, err := db.Query(sqlStatement)
+	if err != nil {
+		log.Fatalf("Unable to execute the query. %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var employee models.Employee
+
+		err = rows.Scan(
+			&employee.EmployeeID,
+			&employee.CreatedAt,
+			&employee.UpdatedAt,
+			&employee.Name,
+			&employee.JoiningDate,
+			&employee.Salary,
+			&employee.PanNumber,
+			&employee.Year,
+			&employee.TaxIncome,
+			&employee.Deductions,
+			&employee.Designation,
+		)
+
+		if err != nil {
+			log.Fatalf("Unable to scan the row. %v", err)
+		}
+
+		employees = append(employees, employee)
+	}
+
+	return employees, err
+}
+
+func updateEmployee(employeeID int64, updatedEmployee models.Employee) int64 {
+	db := createConnection()
+	defer db.Close()
+
+	sqlStatement := `
+		UPDATE employees
+		SET name=$2, joining_date=$3, salary=$4, pan_number=$5, year=$6, tax_income=$7, deductions=$8, designation=$9
+		WHERE employee_id=$1
+	`
+
+	res, err := db.Exec(sqlStatement,
+		employeeID,
+		updatedEmployee.Name,
+		updatedEmployee.JoiningDate,
+		updatedEmployee.Salary,
+		updatedEmployee.PanNumber,
+		updatedEmployee.Year,
+		updatedEmployee.TaxIncome,
+		updatedEmployee.Deductions,
+		updatedEmployee.Designation,
+	)
+
+	if err != nil {
+		log.Fatalf("Unable to execute the query. %v", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		log.Fatalf("Error while checking the affected rows. %v", err)
+	}
+
+	fmt.Printf("Total rows/records affected: %v", rowsAffected)
+	return rowsAffected
+}
+
+// deleteEmployee deletes an employee from the database based on the provided employeeID.
+// It returns the number of rows affected by the deletion operation.
+func deleteEmployee(employeeID int64) int64 {
+	// createConnection establishes a connection to the database.
+	db := createConnection()
+	defer db.Close()
+
+	// SQL statement to delete an employee with the specified employee_id.
+	sqlStatement := `DELETE FROM employees WHERE employee_id=$1`
+
+	// Execute the delete query with the provided employeeID.
+	res, err := db.Exec(sqlStatement, employeeID)
+	if err != nil {
+		log.Fatalf("Unable to execute the query. %v", err)
+	}
+
+	// Get the number of rows affected by the delete operation.
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		log.Fatalf("Error while checking the affected rows. %v", err)
+	}
+
+	// Print the total number of rows/records affected by the delete operation.
+	fmt.Printf("Total rows/records affected: %v", rowsAffected)
+	return rowsAffected
 }
