@@ -20,7 +20,7 @@ func main() {
 		log.Fatal("PORT environment variable not set")
 	}
 
-	r := router.NewRouter()
+	r := router.Router()
 
 	log.Printf("Server starting on port %s", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
